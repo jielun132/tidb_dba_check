@@ -1,13 +1,13 @@
 #!/bin/bash
 # SPDX-License-Identifier: Apache-2.0
-# Public distribution: team attribution corrected and example IPs replaced; inspection logic unchanged.
+# Public distribution: team attribution corrected and example IPs replaced.
 
 # ============================================================================
 # 脚本名称: tidb_dba_check.sh
 # 作者: PingCAP PSE 团队
 # 创建日期: 2024-12-25
-# 版本: 1.4.20
-# 更新日期: 2026-08-10
+# 版本: 1.4.21
+# 更新日期: 2026-10-23
 # 描述:
 #   本脚本根据 `tidb_dba_check.conf` 文件中指定的配置，对 TiDB 集群执行一系列检查。
 #   检查内容包括硬件信息、软件信息、TiDB 概览、最佳实践、系统参数、错误日志、数据库性能问题等等。
@@ -106,14 +106,22 @@
 #       - 修复问题详情表 HTML 结构：添加 <thead> 和 <tbody> 标签，确保 JavaScript 正确选择行元素
 #       - 实现动态样式逻辑：问题数量>0显示颜色样式并可点击，数量=0显示默认样式
 #
+#   1.4.21(GPT-6) (2026-10-23):
+#       - 修复集群配置跨段读取及键名模糊匹配导致 SSH 登录用户名错误的问题
+#       - 兼容 os_user/osuser、CRLF 换行和配置段首尾空格，启动时校验并显示 SSH 用户
+#       - 默认读取脚本同目录配置，支持 CONFIG_FILE 环境变量指定路径
+#       - 统一数据库连接配置解析，保留密码中的 # 和 = 字符
+#       - 修复 TiKV 参数空结果导致五处关联数组 bad array subscript，增加查询异常提示
+#
 # 使用方法: 
 #   tidb_dba_check.sh {cluster-name}   # 对指定的集群执行检查。
 #   tidb_dba_check.sh -h               # 显示帮助信息。
 # ============================================================================
 
-CONFIG_FILE="tidb_dba_check.conf"
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+CONFIG_FILE="${CONFIG_FILE:-$SCRIPT_DIR/tidb_dba_check.conf}"
 CHECK_TIME=$(date "+%Y/%m/%d %H:%M:%S")
-SCRIPT_VERSION="v1.4.20"
+SCRIPT_VERSION="v1.4.21"
 
 
 # 检查是否为帮助选项，如果是则显示帮助
@@ -136,6 +144,11 @@ fi
 CLUSTER_NAME=$1
 if [[ -z "$CLUSTER_NAME" ]]; then
     echo "Error: Missing cluster name. Use -h for help."
+    exit 1
+fi
+
+if [[ ! -r "$CONFIG_FILE" ]]; then
+    echo "[Error] 无法读取配置文件: $CONFIG_FILE" >&2
     exit 1
 fi
 
@@ -166,17 +179,35 @@ INSPECTION_WINDOW_MINUTES=$(awk -F '=' '
 # 转换成小时，用于在 HTML 中展示
 INSPECTION_WINDOW_HOURS=$((INSPECTION_WINDOW_MINUTES / 60))
 
-# 提取指定集群的配置
-HOST_IPS=$(awk -F '=' -v cluster_name="$CLUSTER_NAME" '
-    BEGIN {found=0}
-    /^\[cluster:/ {
-        if ($0 == "[cluster:" cluster_name "]") {
-            found=1
-        } else {
-            found=0
+# 精确读取当前集群段；支持 CRLF、段落空格，遇到其他段立即结束。
+# 密码保留 # 和 =，其他配置允许行尾注释。
+read_cluster_config() {
+    awk -v section="[cluster:$CLUSTER_NAME]" -v key="$1" '
+        { sub(/\r$/, "") }
+        /^[ \t]*\[/ {
+            header=$0
+            sub(/[ \t]*[#;].*$/, "", header)
+            gsub(/^[ \t]+|[ \t]+$/, "", header)
+            active=(header == section)
+            next
         }
-    }
-    found==1 && $1 ~ /host_ips/ {print $2}' "$CONFIG_FILE" | tr -d ' ')
+        active && !/^[ \t]*[#;]/ {
+            pos=index($0, "=")
+            if (!pos) next
+            name=substr($0, 1, pos-1)
+            gsub(/^[ \t]+|[ \t]+$/, "", name)
+            if (name != key && !(key == "os_user" && name == "osuser")) next
+            value=substr($0, pos+1)
+            if (key != "db_password") sub(/[#;].*$/, "", value)
+            gsub(/^[ \t]+|[ \t]+$/, "", value)
+            print value
+            exit
+        }
+    ' "$CONFIG_FILE"
+}
+
+# 提取指定集群的配置
+HOST_IPS=$(read_cluster_config host_ips)
 
 # 如果配置文件里没有填写 host_ips，则通过 `tiup cluster display <cluster_name>` 获取 IP 列表
 if [[ -z "$HOST_IPS" ]]; then
@@ -203,77 +234,17 @@ if [[ -z "$HOST_IPS" ]]; then
         | paste -sd "," -)
 fi
 
-OS_USER=$(awk -F '=' -v cluster_name="$CLUSTER_NAME" '
-    BEGIN {found=0}
-    /^\[cluster:/ {
-        if ($0 == "[cluster:" cluster_name "]") {
-            found=1
-        } else {
-            found=0
-        }
-    }
-    found==1 && $1 ~ /os_user/ {print $2}' "$CONFIG_FILE" | sed 's/#.*//' | tr -d ' ')
+OS_USER=$(read_cluster_config os_user)
+if [[ -z "$OS_USER" || "$OS_USER" == *[[:space:]@/]* || "$OS_USER" == -* ]]; then
+    echo "[Error] 请在 $CONFIG_FILE 的 [cluster:$CLUSTER_NAME] 段配置有效的 os_user（例如 tidb1）。" >&2
+    exit 1
+fi
+echo "SSH 登录用户: $OS_USER（配置文件: $CONFIG_FILE）"
 
-
-DB_IP=$(awk -F '=' -v cluster_name="$CLUSTER_NAME" '
-    BEGIN {found=0}
-    /^\[cluster:/ {
-        if ($0 == "[cluster:" cluster_name "]") {
-            found=1
-        } else {
-            found=0
-        }
-    }
-    found==1 && $1 ~ /db_ip/ {print $2}' "$CONFIG_FILE" | tr -d ' ')
-
-DB_PORT=$(awk -F '=' -v cluster_name="$CLUSTER_NAME" '
-    BEGIN {found=0}
-    /^\[cluster:/ {
-        if ($0 == "[cluster:" cluster_name "]") {
-            found=1
-        } else {
-            found=0
-        }
-    }
-    found==1 && $1 ~ /db_port/ {print $2}' "$CONFIG_FILE" | tr -d ' ')
-
-DB_USER=$(awk -F '=' -v cluster_name="$CLUSTER_NAME" '
-    BEGIN {found=0}
-    /^\[cluster:/ {
-        if ($0 == "[cluster:" cluster_name "]") {
-            found=1
-        } else {
-            found=0
-        }
-    }
-    found==1 && $1 ~ /db_user/ {print $2}' "$CONFIG_FILE" | tr -d ' ')
-
-DB_PASSWORD=$(
-  awk -v cluster_name="$CLUSTER_NAME" '
-    BEGIN {
-      found = 0
-    }
-
-    /^\[cluster:/ {
-      if ($0 == "[cluster:" cluster_name "]") {
-        found = 1
-      } else {
-        found = 0
-      }
-      next
-    }
-
-    found && /^\s*db_password\s*=/ {
-      sub(/^[^=]*=[ \t]*/, "", $0)
-
-      sub(/^[ \t]+/, "", $0)
-      sub(/[ \t]+$/, "", $0)
-
-      print $0
-      exit
-    }
-  ' "$CONFIG_FILE"
-)
+DB_IP=$(read_cluster_config db_ip)
+DB_PORT=$(read_cluster_config db_port)
+DB_USER=$(read_cluster_config db_user)
+DB_PASSWORD=$(read_cluster_config db_password)
 
 # 如果配置文件里没有填写 db_ip 或 db_port，则通过 `tiup cluster display <cluster_name>` 获取第一个 Up 状态的 TiDB 节点信息
 if [[ -z "$DB_IP" || -z "$DB_PORT" ]]; then
@@ -4039,8 +4010,15 @@ function fetch_config_value() {
     local param_name="$1"
     local query="show config where name='$param_name';"
     local result
-    result=$(run_sql "$query")
-    echo "$result" | awk -F'\t' '{print $2, $4}'
+    if ! result=$(run_sql "$query"); then
+        echo "[Warning] 无法读取 TiKV 参数 $param_name，请检查数据库连接、账号和权限。" >&2
+        return 1
+    fi
+    if [[ -z "$result" ]]; then
+        echo "[Warning] TiKV 参数 $param_name 查询无结果，性能检查将缺少对应参数。" >&2
+        return 0
+    fi
+    printf '%s\n' "$result" | awk -F'\t' 'NF >= 4 && $2 != "" {print $2, $4}'
 }
 
 declare -A GRPC_MAP
@@ -4051,26 +4029,31 @@ declare -A APPLY_MAP
 
 # grpc poll cpu -> server.grpc-concurrency
 while read -r inst val; do
+    [[ -n "$inst" ]] || continue
     GRPC_MAP["$inst"]="$val"
 done < <(fetch_config_value "server.grpc-concurrency")
 
 # scheduler worker cpu -> storage.scheduler-worker-pool-size
 while read -r inst val; do
+    [[ -n "$inst" ]] || continue
     SCHED_MAP["$inst"]="$val"
 done < <(fetch_config_value "storage.scheduler-worker-pool-size")
 
 # unified read pool -> readpool.unified.max-thread-count
 while read -r inst val; do
+    [[ -n "$inst" ]] || continue
     URP_MAP["$inst"]="$val"
 done < <(fetch_config_value "readpool.unified.max-thread-count")
 
 # raft store cpu -> raftstore.store-pool-size
 while read -r inst val; do
+    [[ -n "$inst" ]] || continue
     RAFT_MAP["$inst"]="$val"
 done < <(fetch_config_value "raftstore.store-pool-size")
 
 # async apply cpu -> raftstore.apply-pool-size
 while read -r inst val; do
+    [[ -n "$inst" ]] || continue
     APPLY_MAP["$inst"]="$val"
 done < <(fetch_config_value "raftstore.apply-pool-size")
 

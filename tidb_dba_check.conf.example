@@ -15,6 +15,7 @@ db_user = tidb_inspector
 db_password =
 db_port =
 host_ips =
+# SSH 登录用户按实际部署填写，例如 tidb1；兼容 osuser 键名。
 os_user = tidb
 
 [variables_params]
