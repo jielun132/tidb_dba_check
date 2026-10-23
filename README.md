@@ -2,11 +2,11 @@
 
 面向 DBA 的 TiDB 集群巡检工具。通过 TiUP、SQL、SSH、Prometheus 和 ng-monitoring 收集信息，生成包含健康评分、问题明细和性能统计的 HTML 报告。
 
-本仓库从 **v1.4.20** 开始维护，原始脚本日期为 **2026-08-10**。入口统一为 `tidb_dba_check.sh`，后续版本通过 Git 提交、Pull Request 和版本标签管理。
+当前维护版本为 **v1.4.21**。本仓库从 **v1.4.20** 开始维护，原始脚本日期为 **2026-08-10**。入口统一为 `tidb_dba_check.sh`，后续版本通过 Git 提交、Pull Request 和版本标签管理。
 
 [PDF 使用手册](docs/tidb_dba_check_guide_v1.4.pdf) · [使用方法](#快速开始) · [配置说明](#配置说明) · [已知限制](#运行行为与已知限制) · [参与贡献](CONTRIBUTING.md) · [更新记录](CHANGELOG.md) · [Apache-2.0](LICENSE)
 
-**首次使用可先阅读 [《tidb_dba_check.sh 使用说明（v1.4）》](docs/tidb_dba_check_guide_v1.4.pdf)**，其中包含操作步骤、配置说明和报告示例。PDF 保留原始内容；其中的密码和内网地址均为演示数据，已由维护者确认可公开。手册对应 v1.4，v1.4.20 的行为变化与注意事项请同时参考本 README 和更新记录。
+**首次使用可先阅读 [《tidb_dba_check.sh 使用说明（v1.4）》](docs/tidb_dba_check_guide_v1.4.pdf)**，其中包含操作步骤、配置说明和报告示例。PDF 保留原始内容；其中的密码和内网地址均为演示数据，已由维护者确认可公开。手册对应 v1.4，当前版本的行为变化与注意事项请同时参考本 README 和更新记录。
 
 ## 可以检查什么
 
@@ -90,19 +90,19 @@ for cmd in bash tiup mysql ssh curl jq bc awk grep date; do
   command -v "$cmd" || break
 done
 
-# 从配置文件所在目录运行，每次处理一个集群。
+# 每次处理一个集群，默认读取脚本同目录配置。
 bash tidb_dba_check.sh my-cluster
 ```
 
-脚本从**当前工作目录**读取 `tidb_dba_check.conf`，并把结果写入当前目录。请在同一中控机上串行运行，避免固定临时文件相互覆盖；同一集群同一分钟内重复执行也会覆盖同名报告。
+脚本默认从**脚本所在目录**读取 `tidb_dba_check.conf`，并把结果写入当前工作目录。可通过 `CONFIG_FILE=/path/to/local.conf bash tidb_dba_check.sh my-cluster` 指定配置文件；启动时会显示配置路径和实际 SSH 登录用户。请在同一中控机上串行运行，避免固定临时文件相互覆盖；同一集群同一分钟内重复执行也会覆盖同名报告。
 
 ### 4. 查看报告
 
 生成文件的名称包含集群名、脚本版本和分钟级时间戳：
 
 ```text
-my-cluster_check_info_v1.4.20_YYYYMMDD_HHMM.html
-my-cluster_3.4_dev_best_practices_detail_v1.4.20_YYYYMMDD_HHMM.csv
+my-cluster_check_info_v1.4.21_YYYYMMDD_HHMM.html
+my-cluster_3.4_dev_best_practices_detail_v1.4.21_YYYYMMDD_HHMM.csv
 ```
 
 HTML 可用浏览器打开；CSV 对应开发最佳实践检查明细，是否生成取决于模块及查询结果。报告可能包含 IP、拓扑、SQL 文本、表名和日志，只应在获准的范围内保存和分享。
@@ -113,12 +113,12 @@ HTML 可用浏览器打开；CSV 对应开发最佳实践检查明细，是否�
 
 | 配置项 | 说明 |
 | --- | --- |
-| `[cluster:<name>]` | `<name>` 必须与命令参数及 TiUP 集群名完全一致；节名独占一行，不加尾随注释或空格 |
+| `[cluster:<name>]` | `<name>` 必须与命令参数及 TiUP 集群名完全一致；节名独占一行，支持首尾空白及尾随注释 |
 | `db_user` | 必填，数据库巡检账号 |
 | `db_password` | 数据库密码，可为空；完整值取自等号后，首尾空白会被移除 |
 | `db_ip` / `db_port` | 留空时，尝试从 TiUP 输出中寻找第一个 `Up` 状态的 TiDB 节点；自动识别失败时显式填写 |
 | `host_ips` | 留空时从 TiUP 拓扑获取；手动填写时使用英文逗号分隔 |
-| `os_user` | 远程主机登录用户，示例为 `tidb`；应与可用的 SSH 密钥匹配 |
+| `os_user` | 必填的远程主机登录用户，示例为 `tidb`；可按实际部署填写 `tidb1`，兼容键名 `osuser`；应与可用的 SSH 密钥匹配 |
 | `inspection_window_minutes` | 性能与 SQL 数据查询窗口，填正整数分钟；示例为 `720`，缺省时脚本回退到 `2880` |
 
 配置文件可包含多个 `[cluster:<name>]` 节；每次命令只检查指定集群。即使手动填写数据库和主机地址，脚本仍需要 TiUP 和 Prometheus。
@@ -163,7 +163,7 @@ check_sql_order_by_tikv_cpu_time = false
 | 现象 | 排查方向 |
 | --- | --- |
 | `Failed to detect Prometheus address via tiup` | 当前用户的 TiUP 环境、集群名、Prometheus 组件及 `tiup cluster display` 输出 |
-| `Cluster ... not found or missing configuration` | 当前工作目录、配置节名称以及 `db_user` 是否填写 |
+| `Cluster ... not found or missing configuration` | 启动时显示的配置路径、配置节名称以及 `db_user` 是否填写 |
 | 无法找到 SSH 密钥 | 当前用户能否查看 `tiup cluster list`，集群元数据中是否存在对应 SSH 密钥 |
 | SQL 或性能表为空 | 数据库权限、监控可达性、数据保留窗口、系统表和指标的版本差异 |
 | Top SQL CPU 无数据 | ng-monitoring 地址与端口、采集状态和查询窗口内的数据 |
@@ -197,4 +197,4 @@ CI 仅检查 Bash 语法、帮助入口和缺少集群参数时的行为，不�
 
 初始代码来自 `tidb_dba_check_v1.4.20.zip` 中的 `tidb_dba_check_v1.4.20.sh`。作者为 **PingCAP PSE 团队**，包含多个区域参与维护的同事；按维护者确认统一团队署名，保留历史版本记录。
 
-公开版本采用 [Apache License 2.0](LICENSE)。开源整理统一了入口文件名和团队署名，将代码注释中的内网地址替换为文档示例地址，并新增文档、无凭据配置与协作检查；巡检逻辑保持基线版本不变。原始 PDF 手册随仓库发布；原始配置和原始压缩包不包含在公开仓库中。
+公开版本采用 [Apache License 2.0](LICENSE)。开源整理统一了入口文件名和团队署名，将代码注释中的内网地址替换为文档示例地址，并新增文档、无凭据配置与协作检查；初始公开版本的巡检逻辑保持基线版本不变；后续修复见更新记录。原始 PDF 手册随仓库发布；原始配置和原始压缩包不包含在公开仓库中。

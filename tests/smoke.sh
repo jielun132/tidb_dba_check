@@ -28,3 +28,5 @@ else
 fi
 
 printf 'PASS: Bash syntax, both help flags, and missing-cluster behavior\n'
+
+python3 "$repo_dir/tests/config_regression.py"
