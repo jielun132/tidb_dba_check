@@ -1,10 +1,10 @@
 #!/bin/bash
 # SPDX-License-Identifier: Apache-2.0
-# Public distribution: example IPs in comments replaced; inspection logic unchanged.
+# Public distribution: team attribution corrected and example IPs replaced; inspection logic unchanged.
 
 # ============================================================================
 # 脚本名称: tidb_dba_check.sh
-# 作者: PingCAP 南区 PSE 团队
+# 作者: PingCAP PSE 团队
 # 创建日期: 2024-12-25
 # 版本: 1.4.20
 # 更新日期: 2026-08-10

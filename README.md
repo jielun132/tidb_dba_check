@@ -4,7 +4,9 @@
 
 本仓库从 **v1.4.20** 开始维护，原始脚本日期为 **2026-08-10**。入口统一为 `tidb_dba_check.sh`，后续版本通过 Git 提交、Pull Request 和版本标签管理。
 
-[使用方法](#快速开始) · [配置说明](#配置说明) · [已知限制](#运行行为与已知限制) · [参与贡献](CONTRIBUTING.md) · [更新记录](CHANGELOG.md) · [Apache-2.0](LICENSE)
+[PDF 使用手册](docs/tidb_dba_check_guide_v1.4.pdf) · [使用方法](#快速开始) · [配置说明](#配置说明) · [已知限制](#运行行为与已知限制) · [参与贡献](CONTRIBUTING.md) · [更新记录](CHANGELOG.md) · [Apache-2.0](LICENSE)
+
+**首次使用可先阅读 [《tidb_dba_check.sh 使用说明（v1.4）》](docs/tidb_dba_check_guide_v1.4.pdf)**，其中包含操作步骤、配置说明和报告示例。PDF 保留原始内容；其中的密码和内网地址均为演示数据，已由维护者确认可公开。手册对应 v1.4，v1.4.20 的行为变化与注意事项请同时参考本 README 和更新记录。
 
 ## 可以检查什么
 
@@ -31,6 +33,8 @@
 `tidb_inspector` 只是示例账号名称，需要自行创建或替换为已授权账号。请先安装好依赖并核实权限，再运行巡检。
 
 ## 快速开始
+
+配合 [PDF 图文手册](docs/tidb_dba_check_guide_v1.4.pdf) 按以下步骤操作；在 GitHub 文件页面可预览或下载 PDF。
 
 ### 1. 获取代码
 
@@ -175,6 +179,7 @@ CONTRIBUTING.md             分支、PR、验证和版本发布约定
 CHANGELOG.md                版本记录与导入来源
 LICENSE                    Apache License 2.0
 tests/smoke.sh              不连接集群的基础检查
+docs/                      原始 v1.4 PDF 图文使用手册
 .github/                   CI、Issue 与 PR 模板
 ```
 
@@ -190,6 +195,6 @@ CI 仅检查 Bash 语法、帮助入口和缺少集群参数时的行为，不�
 
 ## 来源与许可证
 
-初始代码来自 `tidb_dba_check_v1.4.20.zip` 中的 `tidb_dba_check_v1.4.20.sh`，原脚本署名为 **PingCAP 南区 PSE 团队**，署名及历史版本记录予以保留。
+初始代码来自 `tidb_dba_check_v1.4.20.zip` 中的 `tidb_dba_check_v1.4.20.sh`。作者为 **PingCAP PSE 团队**，包含多个区域参与维护的同事；按维护者确认统一团队署名，保留历史版本记录。
 
-公开版本采用 [Apache License 2.0](LICENSE)。开源整理统一了入口文件名、将代码注释中的内网地址替换为文档示例地址，并新增文档、无凭据配置与协作检查；巡检逻辑保持基线版本不变。原始配置、含环境信息的 PDF 和原始压缩包不包含在公开仓库中。
+公开版本采用 [Apache License 2.0](LICENSE)。开源整理统一了入口文件名和团队署名，将代码注释中的内网地址替换为文档示例地址，并新增文档、无凭据配置与协作检查；巡检逻辑保持基线版本不变。原始 PDF 手册随仓库发布；原始配置和原始压缩包不包含在公开仓库中。
