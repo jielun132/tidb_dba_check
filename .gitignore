@@ -1,0 +1,27 @@
+# Local configuration and credentials
+*.conf
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Inspection output and local distribution archives
+*_check_info_*.html
+*_3.4_dev_best_practices_detail_*.csv
+*.log
+*.zip
+*.tar.gz
+/reports/
+/output/
+/tmp/
+
+# Local editor and index files
+.DS_Store
+.idea/
+.vscode/
+.codegraph/
+*.swp
+*~

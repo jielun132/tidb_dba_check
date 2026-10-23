@@ -1,0 +1,217 @@
+# SPDX-License-Identifier: Apache-2.0
+# Public example derived from v1.4.20: credentials removed; cluster renamed.
+# Copy to tidb_dba_check.conf, restrict permissions, then edit locally.
+# Values below are inherited comparison baselines, not universal tuning guidance.
+
+[global]
+# 720 minutes = 12 hours. The script falls back to 2880 if this field is absent.
+inspection_window_minutes = 720
+
+[cluster:my-cluster]
+# Match the cluster name from `tiup cluster list` exactly.
+# Empty db_ip, db_port and host_ips are discovered through TiUP.
+db_ip =
+db_user = tidb_inspector
+db_password =
+db_port =
+host_ips =
+os_user = tidb
+
+[variables_params]
+tidb_auto_analyze_start_time = 22:00 +0800
+tidb_auto_analyze_end_time = 04:00 +0800
+transaction_isolation = READ-COMMITTED
+tidb_gc_life_time = 24h
+tidb_analyze_version = 2
+tidb_enable_clustered_index = off
+tidb_skip_isolation_level_check = 0
+tidb_auto_analyze_ratio = 0.1
+tidb_stmt_summary_max_stmt_count = 10000
+tidb_enable_noop_functions = 0
+tidb_enable_outer_join_reorder = on
+tidb_enable_top_sql = ON
+tidb_mem_oom_action = cancel
+tidb_mem_quota_analyze = 10737418240
+tidb_mem_quota_query = 10737418240
+tidb_memory_usage_alarm_ratio = 0.5
+tidb_query_log_max_len = 4194304
+tidb_slow_log_threshold = 300
+autocommit = on
+tidb_enable_prepared_plan_cache = off
+tidb_enable_rate_limit_action = off
+tidb_sysproc_scan_concurrency = 10
+tidb_distsql_scan_concurrency = 5
+tidb_executor_concurrency = 5
+tidb_stats_load_pseudo_timeout = on
+tidb_stats_load_sync_wait = 1000
+tidb_enable_pseudo_for_outdated_stats = off
+tidb_partition_prune_mode = dynamic
+tidb_ddl_disk_quota = 107374182400
+tidb_ddl_enable_fast_reorg = on
+tidb_enable_metadata_lock = on
+tidb_enable_noop_variables = on
+tidb_memory_usage_alarm_keep_record_num = 10
+tidb_server_memory_limit = 64%/N
+tidb_server_memory_limit_gc_trigger = 0.7
+tidb_server_memory_limit_sess_min_size = 1073741824
+tidb_enable_gogc_tuner = ON
+tidb_gogc_tuner_threshold = 0.6
+tidb_enable_tmp_storage_on_oom = ON
+tidb_max_tiflash_threads = CPU_CNT / 4
+default_password_lifetime = 0
+password_history = 0
+password_reuse_interval = 0
+validate_password.enable = on
+validate_password.check_user_name = off
+validate_password.policy = 1
+validate_password.dictionary =
+validate_password.length = 10
+validate_password.mixed_case_count = 1
+validate_password.number_count = 1
+validate_password.special_char_count = 1
+tidb_auto_build_stats_concurrency = 4
+tidb_auto_analyze_partition_batch_size = 8192
+sql_require_primary_key = ON
+group_concat_max_len = 102400
+tidb_enable_paging = ON
+tidb_opt_range_max_size = 67108864
+tidb_scatter_region = table
+tidb_super_read_only = OFF
+tidb_restricted_read_only = OFF
+tidb_max_chunk_size = 1024
+tidb_opt_fix_control = 44855:on,44262:on,46177:on
+tidb_cost_model_version = 2
+tidb_ttl_job_enable = OFF
+tidb_load_binding_timeout = 1000
+tidb_mem_quota_binding_cache = 1073741824
+foreign_key_checks = OFF
+pd_enable_follower_handle_region = OFF
+tidb_analyze_column_options = ALL
+tidb_enable_dist_task = OFF
+tidb_enable_fast_create_table = ON
+tidb_enable_foreign_key = OFF
+tidb_enable_inl_join_inner_multi_pattern = ON
+tidb_enable_null_aware_anti_join = ON
+tidb_enable_resource_control = ON
+tidb_opt_advanced_join_hint = OFF
+tidb_opt_objective = determinate
+tidb_opt_ordering_index_selectivity_ratio = -1
+tidb_opt_ordering_index_selectivity_threshold = 1
+tidb_opt_prefer_range_scan = OFF
+tidb_opt_projection_push_down = ON
+tidb_pessimistic_txn_fair_locking = OFF
+tidb_remove_orderby_in_subquery = OFF
+tidb_schema_cache_size = 4294967296
+tidb_enable_external_ts_read = OFF
+tidb_external_ts = 0
+tidb_opt_enable_semi_join_rewrite = ON
+tidb_opt_enable_fuzzy_binding = ON
+tidb_stats_cache_mem_quota = MEM_TOTAL * 0.2/N
+
+[tidb_config_params]
+log.level = info
+log.slow-threshold = 2000
+log.file.max-days = 180
+log.file.max-size = 300
+log.file.max-backups = 300
+new_collations_enabled_on_first_bootstrap = true
+table-column-count-limit = 4096
+max-index-length = 12000
+max_connections = 2000
+tmp-storage-quota = 536870912000
+performance.max-procs = 20
+performance.max-txn-ttl = 3600000
+instance.tidb_slow_log_threshold = 2000
+performance.force-init-stats = true
+enable-telemetry = false
+server-version = 99.7.${mysql_latest_minor_version}-TiDB-${tidb_version}
+token-limit = 1000
+performance.txn-total-size-limit = 1073741824
+
+[pd_config_params]
+log.file.max-size = 300
+log.file.max-days = 180
+log.file.max-backups = 50
+replication.location-labels = zone,rack,host
+replication.max-replicas = 3
+low-space-ratio = 0.8
+high-space-ratio = 0.7
+enable-cross-table-merge = true
+dashboard.enable-telemetry = false
+schedule.max-store-down-time = 120m
+max-store-preparing-time = 0
+
+[tikv_config_params]
+log.level = info
+log.format = text
+log.enable-timestamp = true
+log.file.max-size = 1024
+log.file.max-days = 60
+log.file.max-backups = 200
+pessimistic-txn.pipelined = false
+pessimistic-txn.in-memory = false
+raftstore.apply-max-batch-size = 1024
+raftstore.apply-pool-size = 4
+raftstore.store-pool-size = 4
+raftstore.store-io-pool-size = 2
+readpool.coprocessor.use-unified-pool = true
+readpool.storage.use-unified-pool = true
+readpool.storage.high-concurrency = 12
+readpool.storage.low-concurrency = 12
+readpool.storage.normal-concurrency = 12
+readpool.storage.use-unified-pool = false
+readpool.unified.max-thread-count = 20
+storage.block-cache.capacity = 96GiB
+raftstore.capacity = 4TiB
+server.end-point-max-concurrency = 20
+server.grpc-concurrency = 5
+server.grpc-raft-conn-num = 1
+gc.enable-compaction-filter = true
+coprocessor.region-split-keys = 2560000
+coprocessor.region-split-size = 256MiB
+coprocessor.region-max-keys = 3840000
+coprocessor.region-max-size = 384MiB
+snap-generator-pool-size = 2
+rocksdb.titan.enabled = true
+rocksdb.defaultcf.titan.shared-blob-cache = true
+rocksdb.defaultcf.titan.blob-run-mode = normal
+rocksdb.defaultcf.titan.min-blob-size = 16KiB
+raft-engine.memory-limit = 15GiB
+memory-usage-limit = 160GiB
+server.end-point-memory-quota = 4GiB
+resolved-ts.memory-quota = 512MiB
+log-backup.enable = true
+log-backup.file-size-limit = 256MiB
+log-backup.initial-scan-pending-memory-quota = 2GiB
+log-backup.initial-scan-rate-limit = 60MiB
+log-backup.max-flush-interval = 3min
+log-backup.num-threads = 5
+resolved-ts.enable = true
+cdc.sink-memory-quota = 4GiB
+
+
+[modules]
+# 各模块的检查开关，true 表示启用，false 表示禁用
+# 第三章
+check_hardware_info = true
+check_software_info = true
+check_tidb_overview = true
+check_dev_best_practices = true
+check_db_params = true
+check_stats_best_practices = true
+check_sys_config = true
+check_crontab = true
+check_dmesg_logs = true
+check_db_error_logs = true
+check_user_space = true
+# 第四章
+check_pd_performance = true
+check_tidb_performance = true
+check_tikv_performance = true
+# 第五章
+check_sql_order_by_elapsed_time = true
+check_sql_order_by_tidb_cpu_time = true
+check_sql_order_by_tikv_cpu_time = true
+check_sql_order_by_executions = true
+check_sql_order_by_plans = true
+
